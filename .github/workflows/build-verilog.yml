@@ -1,0 +1,27 @@
+name: build-verilog
+
+# Controls when the action will run. 
+on:
+  # Trigger on push or pull request events
+  push:
+    branches: [ ]
+  pull_request:
+    branches: [ ]
+
+  # Support running this workflow manually
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v10
+        with:
+          java-version: "adopt@1.8"
+
+      - name: Build VexRiscv cores
+        run: make -C pythondata_cpu_vexriscv/verilog
