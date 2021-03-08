@@ -25,8 +25,8 @@ jobs:
         with:
           java-version: "adopt@1.8"
 
-      - name: Build VexRiscv cores
-        run: make -C pythondata_cpu_vexriscv/verilog
+      # - name: Build VexRiscv cores
+      #   run: make -C pythondata_cpu_vexriscv/verilog
 
       - name: Prepare potential release tarball
         run: |
@@ -51,10 +51,10 @@ jobs:
             --owner=root:0 --group=root:0 \
             --mtime='UTC 2020-01-01' \
             --transform 's|^|pythondata_cpu_vexriscv/|' \
-            -zcvf $HOME/generated.tar.gz .
+            -zcvf /tmp/generated.tar.gz .
 
       - name: Upload potential release tarball
         uses: actions/upload-artifact@v2
         with:
           name: generated.tar.gz
-          path: $HOME/generated.tar.gz
+          path: /tmp/generated.tar.gz
