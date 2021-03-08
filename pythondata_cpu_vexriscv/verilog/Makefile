@@ -1,6 +1,6 @@
 SRC := ${shell find . -type f -name \*.scala}
 
-all: VexRiscv.v VexRiscv_Debug.v VexRiscv_Lite.v VexRiscv_LiteDebug.v VexRiscv_IMAC.v VexRiscv_IMACDebug.v VexRiscv_Min.v VexRiscv_MinDebug.v VexRiscv_Full.v VexRiscv_FullDebug.v VexRiscv_Linux.v VexRiscv_LinuxDebug.v VexRiscv_LinuxNoDspFmax.v VexRiscv_Secure.v VexRiscv_SecureDebug.v 
+all: VexRiscv.v VexRiscv_Debug.v VexRiscv_Lite.v VexRiscv_LiteDebug.v VexRiscv_IMAC.v VexRiscv_IMACDebug.v VexRiscv_Min.v VexRiscv_MinDebug.v VexRiscv_Full.v VexRiscv_FullDebug.v VexRiscv_Linux.v VexRiscv_LinuxDebug.v VexRiscv_LinuxNoDspFmax.v VexRiscv_Secure.v VexRiscv_SecureDebug.v VexRiscv_TockSecureIMC.v VexRiscv_TockSecureIMCDebug.v
 
 VexRiscv.v: $(SRC)
 	sbt compile "runMain vexriscv.GenCoreDefault"
@@ -46,3 +46,9 @@ VexRiscv_Secure.v: $(SRC)
 
 VexRiscv_SecureDebug.v: $(SRC)
 	sbt compile "runMain vexriscv.GenCoreDefault --pmp true --csrPluginConfig secure -d --outputFile VexRiscv_SecureDebug"
+
+VexRiscv_TockSecureIMC.v: $(SRC)
+	sbt compile "runMain vexriscv.GenCoreDefault --pmp true --csrPluginConfig secure --compressedGen true --mulDiv true --outputFile VexRiscv_TockSecureIMC"
+
+VexRiscv_TockSecureIMCDebug.v: $(SRC)
+	sbt compile "runMain vexriscv.GenCoreDefault --pmp true --csrPluginConfig secure --compressedGen true --mulDiv true -d --outputFile VexRiscv_TockSecureIMCDebug"
