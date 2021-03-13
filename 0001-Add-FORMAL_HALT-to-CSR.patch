@@ -1,0 +1,25 @@
+From 011a52096ca93f02ecc5a2fdac710ef61d90533f Mon Sep 17 00:00:00 2001
+From: Leon Schuermann <leon@is.currently.online>
+Date: Sat, 13 Mar 2021 11:38:22 +0100
+Subject: [PATCH] Add FORMAL_HALT to CSR
+
+---
+ src/main/scala/vexriscv/plugin/CsrPlugin.scala | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/main/scala/vexriscv/plugin/CsrPlugin.scala b/src/main/scala/vexriscv/plugin/CsrPlugin.scala
+index 5c7e032..fe540c2 100644
+--- a/src/main/scala/vexriscv/plugin/CsrPlugin.scala
++++ b/src/main/scala/vexriscv/plugin/CsrPlugin.scala
+@@ -458,6 +458,8 @@ class CsrPlugin(val config: CsrPluginConfig) extends Plugin[VexRiscv] with Excep
+   override def build(pipeline: VexRiscv): Unit = {
+     import pipeline._
+     import pipeline.config._
++    stages.head.insert(FORMAL_HALT) := False
++
+     val fetcher = service(classOf[IBusFetcher])
+ 
+     //Define CSR mapping utilities
+-- 
+2.30.1
+

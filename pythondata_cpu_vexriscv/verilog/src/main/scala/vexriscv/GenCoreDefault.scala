@@ -27,6 +27,7 @@ case class ArgConfig(
   mulDiv : Boolean = true,
   cfu : Boolean = false,
   atomics: Boolean = false,
+  rvfi: Boolean = false,
   compressedGen: Boolean = false,
   singleCycleMulDiv : Boolean = true,
   singleCycleShift : Boolean = true,
@@ -65,6 +66,7 @@ object GenCoreDefault{
       opt[Boolean]("mulDiv")    action { (v, c) => c.copy(mulDiv = v)   } text("set RV32IM")
       opt[Boolean]("cfu")       action { (v, c) => c.copy(cfu = v)   } text("If true, add SIMD ADD custom function unit")
       opt[Boolean]("atomics")    action { (v, c) => c.copy(atomics = v)   } text("set RV32I[A]")
+      opt[Boolean]("rvfi")    action { (v, c) => c.copy(rvfi = v)   } text("enable the RISC-V formal interface (RVFI)")
       opt[Boolean]("compressedGen")    action { (v, c) => c.copy(compressedGen = v)   } text("set RV32I[C]")
       opt[Boolean]("singleCycleMulDiv")    action { (v, c) => c.copy(singleCycleMulDiv = v)   } text("If true, MUL/DIV are single-cycle")
       opt[Boolean]("singleCycleShift")    action { (v, c) => c.copy(singleCycleShift = v)   } text("If true, SHIFTS are single-cycle")
@@ -200,6 +202,12 @@ object GenCoreDefault{
         ),
         new YamlPlugin(argConfig.outputFile.concat(".yaml"))
       )
+
+      if (argConfig.rvfi) {
+        plugins ++= List(
+          new FormalPlugin
+	)
+      }
 
       if(argConfig.mulDiv) {
         if(argConfig.singleCycleMulDiv) {

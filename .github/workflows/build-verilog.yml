@@ -19,11 +19,18 @@ jobs:
       - uses: actions/checkout@v2
         with:
           submodules: true
+          fetch-depth: 0
 
       - name: Setup Scala
         uses: olafurpg/setup-scala@v10
         with:
           java-version: "adopt@1.8"
+
+      - name: Patch VexRiscv
+        run: |
+          pushd pythondata_cpu_vexriscv/verilog/ext/VexRiscv/
+          git apply -3 ../../../../0001-Add-FORMAL_HALT-to-CSR.patch
+          popd
 
       - name: Build VexRiscv cores
         run: make -C pythondata_cpu_vexriscv/verilog
