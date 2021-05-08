@@ -23,7 +23,7 @@ VexRiscv_IMACDebug.v: $(SRC)
 	sbt compile "runMain vexriscv.GenCoreDefault --csrPluginConfig all --atomics true --compressedGen true -d --outputFile VexRiscv_IMACDebug"
 
 VexRiscv_Min.v: $(SRC)
-	sbt compile "runMain vexriscv.GenCoreDefault --pmp true --csrPluginConfig secure --iCacheSize 0 --dCacheSize 0 --mulDiv false --singleCycleShift false --singleCycleMulDiv false --bypass false --prediction none --rvfi true --outputFile VexRiscv_Min"
+	sbt compile "runMain vexriscv.GenCoreDefault --pmp true --csrPluginConfig secure --iCacheSize 0 --dCacheSize 0 --mulDiv true --singleCycleShift false --singleCycleMulDiv false --bypass false --prediction none --rvfi true --compressedGen true --outputFile VexRiscv_Min"
 
 VexRiscv_MinDebug.v: $(SRC)
 	sbt compile "runMain vexriscv.GenCoreDefault -d --iCacheSize 0 --dCacheSize 0 --mulDiv false --singleCycleShift false --singleCycleMulDiv false --bypass false --prediction none --outputFile VexRiscv_MinDebug"
