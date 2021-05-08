@@ -60,7 +60,7 @@ VexRiscv_TockSecureIMCDebug.v: $(SRC)
 	sbt compile "runMain vexriscv.GenCoreDefault --pmp true --csrPluginConfig secure --compressedGen true --mulDiv true -d --outputFile VexRiscv_TockSecureIMCDebug"
 
 VexRiscv_TockSecureIMCFormal.v: $(SRC)
-	sbt compile "runMain vexriscv.GenCoreDefault --pmp true --csrPluginConfig secure --compressedGen true --mulDiv true --iCacheSize 0 --dCacheSize 0 --rvfi true --outputFile VexRiscv_TockSecureIMCFormal"
+	sbt compile "runMain vexriscv.GenCoreDefault --iCacheSize 0 --dCacheSize 0 --pmp true --csrPluginConfig secure --compressedGen true --mulDiv true --singleCycleShift false --singleCycleMulDiv false --bypass false --prediction none --rvfi true --outputFile VexRiscv_TockSecureIMCFormal"
 
 VexRiscv_TockSecureIMCFormalDebug.v: $(SRC)
-	sbt compile "runMain vexriscv.GenCoreDefault --pmp true --csrPluginConfig secure --compressedGen true --mulDiv true --iCacheSize 0 --dCacheSize 0 --rvfi true -d --outputFile VexRiscv_TockSecureIMCFormalDebug"
+	sbt compile "runMain vexriscv.GenCoreDefault --iCacheSize 0 --dCacheSize 0 --pmp true --csrPluginConfig secure --compressedGen true --mulDiv true --singleCycleShift false --singleCycleMulDiv false --bypass false --prediction none --rvfi true -d --outputFile VexRiscv_TockSecureIMCFormalDebug"
