@@ -54,7 +54,7 @@ VexRiscv_SecureDebug.v: $(SRC)
 	sbt compile "runMain vexriscv.GenCoreDefault --pmpRegions 16 --pmpGranularity 256 --csrPluginConfig secure -d --outputFile VexRiscv_SecureDebug"
 
 VexRiscv_TockSecureIMC.v: $(SRC)
-	sbt compile "runMain vexriscv.GenCoreDefault --pmpRegions 16 --pmpGranularity 256 --csrPluginConfig secure --compressedGen true --mulDiv true --outputFile VexRiscv_TockSecureIMC"
+	sbt compile "runMain vexriscv.GenCoreDefault --pmpOld true --csrPluginConfig secure --compressedGen true --mulDiv true --outputFile VexRiscv_TockSecureIMC"
 
 VexRiscv_TockSecureIMCDebug.v: $(SRC)
-	sbt compile "runMain vexriscv.GenCoreDefault --pmpRegions 16 --pmpGranularity 256 --csrPluginConfig secure --compressedGen true --mulDiv true -d --outputFile VexRiscv_TockSecureIMCDebug"
+	sbt compile "runMain vexriscv.GenCoreDefault --pmpOld true --csrPluginConfig secure --compressedGen true --mulDiv true -d --outputFile VexRiscv_TockSecureIMCDebug"
