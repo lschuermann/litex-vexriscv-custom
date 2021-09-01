@@ -25,6 +25,7 @@ case class ArgConfig(
   dCacheSize : Int = 4096,
   pmpRegions : Int = 0,
   pmpGranularity : Int = 256,
+  pmpOld : Boolean = false,
   mulDiv : Boolean = true,
   cfu : Boolean = false,
   atomics: Boolean = false,
@@ -64,6 +65,7 @@ object GenCoreDefault{
       opt[Int]("dCacheSize")     action { (v, c) => c.copy(dCacheSize = v) } text("Set data cache size, 0 mean no cache")
       opt[Int]("pmpRegions")    action { (v, c) => c.copy(pmpRegions = v)   } text("Number of PMP regions, 0 disables PMP")
       opt[Int]("pmpGranularity")    action { (v, c) => c.copy(pmpGranularity = v)   } text("Granularity of PMP regions (in bytes)")
+      opt[Boolean]("pmpOld")    action { (v, c) => c.copy(pmpOld = v)   } text("Old PMP plugin which supports addressing modes other than NAPOT")
       opt[Boolean]("mulDiv")    action { (v, c) => c.copy(mulDiv = v)   } text("set RV32IM")
       opt[Boolean]("cfu")       action { (v, c) => c.copy(cfu = v)   } text("If true, add SIMD ADD custom function unit")
       opt[Boolean]("atomics")    action { (v, c) => c.copy(atomics = v)   } text("set RV32I[A]")
@@ -156,6 +158,8 @@ object GenCoreDefault{
           ioRange = (x => x(31 downto 28) === 0xB || x(31 downto 28) === 0xE || x(31 downto 28) === 0xF)
         ) else if (argConfig.pmpRegions > 0) new PmpPlugin(
           regions = argConfig.pmpRegions, granularity = argConfig.pmpGranularity, ioRange = _.msb
+        ) else if (argConfig.pmpOld) new PmpPluginOld(
+          regions = 16, ioRange = _.msb
         ) else new StaticMemoryTranslatorPlugin(
           ioRange      = _.msb
         ),
