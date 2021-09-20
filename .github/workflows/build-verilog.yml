@@ -25,6 +25,12 @@ jobs:
         with:
           java-version: "adopt@1.8"
 
+      - name: Locally build and publish the VexRiscv library
+        run: |
+          pushd pythondata_cpu_vexriscv/verilog/ext/VexRiscv
+          sbt clean compile publishLocal
+          popd
+
       - name: Build VexRiscv cores
         run: make -C pythondata_cpu_vexriscv/verilog
 
