@@ -25,9 +25,10 @@ jobs:
         with:
           java-version: "adopt@1.8"
 
-      - name: Locally build and publish the VexRiscv library
+      - name: Patch, locally build and publish the VexRiscv library
         run: |
           pushd pythondata_cpu_vexriscv/verilog/ext/VexRiscv
+          git apply ../0001-Add-PmpPluginOld-support-TOR.patch
           sbt clean compile publishLocal
           popd
 
