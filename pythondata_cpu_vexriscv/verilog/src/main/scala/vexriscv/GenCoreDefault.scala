@@ -38,6 +38,7 @@ case class ArgConfig(
   externalInterruptArray : Boolean = true,
   resetVector : BigInt = null,
   machineTrapVector : BigInt = null,
+  xtvecModeGen : Boolean = false,
   prediction : BranchPrediction = STATIC,
   outputFile : String = "VexRiscv",
   csrPluginConfig : String = "small",
@@ -80,6 +81,7 @@ object GenCoreDefault{
       opt[Boolean]("dBusCachedEarlyWaysHits")    action { (v, c) => c.copy(dBusCachedEarlyWaysHits = v)   } text("If set, the d$ way hit calculation is done in the memory stage, else in the writeback stage.")
       opt[String]("resetVector")    action { (v, c) => c.copy(resetVector = BigInt(if(v.startsWith("0x")) v.tail.tail else v, 16))   } text("Specify the CPU reset vector in hexadecimal. If not specified, an 32 bits input is added to the CPU to set durring instanciation")
       opt[String]("machineTrapVector")    action { (v, c) => c.copy(machineTrapVector = BigInt(if(v.startsWith("0x")) v.tail.tail else v, 16))   } text("Specify the CPU machine trap vector in hexadecimal. If not specified, it take a unknown value when the design boot")
+      opt[Unit]("xtvecModeGen")    action { (v, c) => c.copy(xtvecModeGen = true)} text("Enable xtvec vector support")
       opt[String]("prediction")    action { (v, c) => c.copy(prediction = predictionMap(v))   } text("switch between regular CSR and array like one")
       opt[String]("outputFile")    action { (v, c) => c.copy(outputFile = v) } text("output file name")
       opt[String]("csrPluginConfig")  action { (v, c) => c.copy(csrPluginConfig = v) } text("switch between 'small', 'all', 'linux' and 'linux-minimal' version of control and status registers configuration")
@@ -195,13 +197,13 @@ object GenCoreDefault{
           catchAddressMisaligned = true
         ),
         new CsrPlugin(
-          argConfig.csrPluginConfig match {
+          (argConfig.csrPluginConfig match {
             case "small" => CsrPluginConfig.small(mtvecInit = argConfig.machineTrapVector).copy(mtvecAccess = WRITE_ONLY, ecallGen = true, wfiGenAsNop = true)
             case "all" => CsrPluginConfig.all(mtvecInit = argConfig.machineTrapVector)
             case "linux" => CsrPluginConfig.linuxFull(mtVecInit = argConfig.machineTrapVector).copy(ebreakGen = false)
             case "linux-minimal" => CsrPluginConfig.linuxMinimal(mtVecInit = argConfig.machineTrapVector).copy(ebreakGen = false)
             case "secure" => CsrPluginConfig.secure(argConfig.machineTrapVector)
-          }
+          }).copy(xtvecModeGen = argConfig.xtvecModeGen)
         ),
         new YamlPlugin(argConfig.outputFile.concat(".yaml"))
       )
