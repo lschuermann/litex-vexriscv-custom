@@ -159,7 +159,7 @@ object GenCoreDefault{
         },
         if (linux) new MmuPlugin(
           ioRange = (x => x(31 downto 28) === 0xB || x(31 downto 28) === 0xE || x(31 downto 28) === 0xF)
-        ) else if (argConfig.pmpRegions > 0) new PmpPlugin(
+        ) else if (argConfig.pmpRegions > 0) new PmpPluginNapot(
           regions = argConfig.pmpRegions, granularity = argConfig.pmpGranularity, ioRange = _.msb
         ) else new StaticMemoryTranslatorPlugin(
           ioRange      = _.msb

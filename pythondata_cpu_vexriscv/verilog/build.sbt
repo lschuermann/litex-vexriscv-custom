@@ -1,11 +1,11 @@
-val spinalVersion = "1.6.0"
+val spinalVersion = "1.9.4"
 
 lazy val root = (project in file(".")).
   settings(
     inThisBuild(List(
       organization := "com.github.spinalhdl",
       scalaVersion := "2.11.12",
-      version      := "0.1.0-SNAPSHOT"
+      version      := "2.0.0"
     )),
     name := "VexRiscvOnWishbone",
     libraryDependencies ++= Seq(
