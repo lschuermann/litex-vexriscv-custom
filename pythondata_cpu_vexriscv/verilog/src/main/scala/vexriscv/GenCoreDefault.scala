@@ -27,6 +27,7 @@ case class ArgConfig(
   dCacheSize : Int = 4096,
   pmpRegions : Int = 0,
   pmpGranularity : Int = 256,
+  pmpAddressMatchingModes : String = "na4,napot,tor",
   mulDiv : Boolean = true,
   cfu : Boolean = false,
   atomics: Boolean = false,
@@ -68,6 +69,7 @@ object GenCoreDefault{
       opt[Int]("dCacheSize")     action { (v, c) => c.copy(dCacheSize = v) } text("Set data cache size, 0 mean no cache")
       opt[Int]("pmpRegions")    action { (v, c) => c.copy(pmpRegions = v)   } text("Number of PMP regions, 0 disables PMP")
       opt[Int]("pmpGranularity")    action { (v, c) => c.copy(pmpGranularity = v)   } text("Granularity of PMP regions (in bytes)")
+      opt[String]("pmpAddressMatchingModes")    action { (v, c) => c.copy(pmpAddressMatchingModes = v)   } text("Which PMP address matching modes to support (comma-separated, out of [NA4, NAPOT, TOR])")
       opt[Boolean]("mulDiv")    action { (v, c) => c.copy(mulDiv = v)   } text("set RV32IM")
       opt[Boolean]("cfu")       action { (v, c) => c.copy(cfu = v)   } text("If true, add custom function unit interface")
       opt[Boolean]("atomics")    action { (v, c) => c.copy(atomics = v)   } text("set RV32I[A]")
@@ -159,9 +161,30 @@ object GenCoreDefault{
         },
         if (linux) new MmuPlugin(
           ioRange = (x => x(31 downto 28) === 0xB || x(31 downto 28) === 0xE || x(31 downto 28) === 0xF)
-        ) else if (argConfig.pmpRegions > 0) new PmpPlugin(
-          regions = argConfig.pmpRegions, granularity = argConfig.pmpGranularity, ioRange = _.msb
-        ) else new StaticMemoryTranslatorPlugin(
+        ) else if (argConfig.pmpRegions > 0) {
+          val splitModes = argConfig.pmpAddressMatchingModes.toLowerCase().split(",");
+
+          // Ensure the user didn't request any unsupported modes
+          val unknownModes = splitModes.filterNot(s => List("na4", "napot", "tor").contains(s));
+          if (unknownModes.length > 0) {
+            throw new Exception("Unknown PMP addressing mode: " + unknownModes(0));
+          }
+
+          if (splitModes.sameElements(List("napot"))) {
+            println("Using optimized PmpPluginNapot, supporting only the NAPOT addressing mode.");
+            new PmpPluginNapot(
+              regions = argConfig.pmpRegions,
+              granularity = argConfig.pmpGranularity,
+              ioRange = _.msb
+            )
+          } else {
+            println("Using PmpPlugin supporting the NA4, NAPOT, and TOR addressing modes.");
+            println("This will ignore the pmpGranularity argument and have 4-byte granularity.");
+            new PmpPlugin (
+              regions = 16, ioRange = _.msb
+            )
+          }
+        } else new StaticMemoryTranslatorPlugin(
           ioRange      = _.msb
         ),
 
