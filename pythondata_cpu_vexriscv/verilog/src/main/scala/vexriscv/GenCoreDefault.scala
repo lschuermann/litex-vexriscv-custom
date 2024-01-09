@@ -17,15 +17,17 @@ object SpinalConfig extends spinal.core.SpinalConfig(
 ){
   //Insert a compilation phase which will add a  (* ram_style = "block" *) on all synchronous rams.
   phasesInserters += {(array) => array.insert(array.indexWhere(_.isInstanceOf[PhaseAllocateNames]) + 1, new ForceRamBlockPhase)}
+  phasesInserters += {(array) => array.insert(array.indexWhere(_.isInstanceOf[PhaseAllocateNames]) + 1, new NoRwCheckPhase)}
 }
 
 case class ArgConfig(
   debug : Boolean = false,
+  hardwareBreakpointCount : Int = 0,
   iCacheSize : Int = 4096,
   dCacheSize : Int = 4096,
   pmpRegions : Int = 0,
   pmpGranularity : Int = 256,
-  pmpOld : Boolean = false,
+  pmpAddressMatchingModes : String = "na4,napot,tor",
   mulDiv : Boolean = true,
   cfu : Boolean = false,
   atomics: Boolean = false,
@@ -37,6 +39,7 @@ case class ArgConfig(
   externalInterruptArray : Boolean = true,
   resetVector : BigInt = null,
   machineTrapVector : BigInt = null,
+  xtvecModeGen : Boolean = false,
   prediction : BranchPrediction = STATIC,
   outputFile : String = "VexRiscv",
   csrPluginConfig : String = "small",
@@ -59,15 +62,16 @@ object GenCoreDefault{
     val parser = new scopt.OptionParser[ArgConfig]("VexRiscvGen") {
       //  ex :-d    or   --debug
       opt[Unit]('d', "debug")    action { (_, c) => c.copy(debug = true)   } text("Enable debug")
+      opt[Int]("hardwareBreakpointCount")     action { (v, c) => c.copy(hardwareBreakpointCount = v) } text("Set number of available hardware breakpoints, defaults to 0")
       // ex : -iCacheSize=XXX
       opt[Int]("iCacheSize")     action { (v, c) => c.copy(iCacheSize = v) } text("Set instruction cache size, 0 mean no cache")
       // ex : -dCacheSize=XXX
       opt[Int]("dCacheSize")     action { (v, c) => c.copy(dCacheSize = v) } text("Set data cache size, 0 mean no cache")
       opt[Int]("pmpRegions")    action { (v, c) => c.copy(pmpRegions = v)   } text("Number of PMP regions, 0 disables PMP")
       opt[Int]("pmpGranularity")    action { (v, c) => c.copy(pmpGranularity = v)   } text("Granularity of PMP regions (in bytes)")
-      opt[Boolean]("pmpOld")    action { (v, c) => c.copy(pmpOld = v)   } text("Old PMP plugin which supports addressing modes other than NAPOT")
+      opt[String]("pmpAddressMatchingModes")    action { (v, c) => c.copy(pmpAddressMatchingModes = v)   } text("Which PMP address matching modes to support (comma-separated, out of [NA4, NAPOT, TOR])")
       opt[Boolean]("mulDiv")    action { (v, c) => c.copy(mulDiv = v)   } text("set RV32IM")
-      opt[Boolean]("cfu")       action { (v, c) => c.copy(cfu = v)   } text("If true, add SIMD ADD custom function unit")
+      opt[Boolean]("cfu")       action { (v, c) => c.copy(cfu = v)   } text("If true, add custom function unit interface")
       opt[Boolean]("atomics")    action { (v, c) => c.copy(atomics = v)   } text("set RV32I[A]")
       opt[Boolean]("compressedGen")    action { (v, c) => c.copy(compressedGen = v)   } text("set RV32I[C]")
       opt[Boolean]("singleCycleMulDiv")    action { (v, c) => c.copy(singleCycleMulDiv = v)   } text("If true, MUL/DIV are single-cycle")
@@ -79,6 +83,7 @@ object GenCoreDefault{
       opt[Boolean]("dBusCachedEarlyWaysHits")    action { (v, c) => c.copy(dBusCachedEarlyWaysHits = v)   } text("If set, the d$ way hit calculation is done in the memory stage, else in the writeback stage.")
       opt[String]("resetVector")    action { (v, c) => c.copy(resetVector = BigInt(if(v.startsWith("0x")) v.tail.tail else v, 16))   } text("Specify the CPU reset vector in hexadecimal. If not specified, an 32 bits input is added to the CPU to set durring instanciation")
       opt[String]("machineTrapVector")    action { (v, c) => c.copy(machineTrapVector = BigInt(if(v.startsWith("0x")) v.tail.tail else v, 16))   } text("Specify the CPU machine trap vector in hexadecimal. If not specified, it take a unknown value when the design boot")
+      opt[Unit]("xtvecModeGen")    action { (v, c) => c.copy(xtvecModeGen = true)} text("Enable xtvec vector support")
       opt[String]("prediction")    action { (v, c) => c.copy(prediction = predictionMap(v))   } text("switch between regular CSR and array like one")
       opt[String]("outputFile")    action { (v, c) => c.copy(outputFile = v) } text("output file name")
       opt[String]("csrPluginConfig")  action { (v, c) => c.copy(csrPluginConfig = v) } text("switch between 'small', 'all', 'linux' and 'linux-minimal' version of control and status registers configuration")
@@ -147,7 +152,7 @@ object GenCoreDefault{
               catchIllegal = true,
               catchUnaligned = true,
               withLrSc = linux || argConfig.atomics,
-              withAmo = linux,
+              withAmo = linux || argConfig.atomics,
               earlyWaysHits = argConfig.dBusCachedEarlyWaysHits
             ),
             memoryTranslatorPortConfig = if(linux) MmuPortConfig(portTlbSize = 4) else null,
@@ -156,11 +161,30 @@ object GenCoreDefault{
         },
         if (linux) new MmuPlugin(
           ioRange = (x => x(31 downto 28) === 0xB || x(31 downto 28) === 0xE || x(31 downto 28) === 0xF)
-        ) else if (argConfig.pmpRegions > 0) new PmpPlugin(
-          regions = argConfig.pmpRegions, granularity = argConfig.pmpGranularity, ioRange = _.msb
-        ) else if (argConfig.pmpOld) new PmpPluginOld(
-          regions = 16, ioRange = _.msb
-        ) else new StaticMemoryTranslatorPlugin(
+        ) else if (argConfig.pmpRegions > 0) {
+          val splitModes = argConfig.pmpAddressMatchingModes.toLowerCase().split(",");
+
+          // Ensure the user didn't request any unsupported modes
+          val unknownModes = splitModes.filterNot(s => List("na4", "napot", "tor").contains(s));
+          if (unknownModes.length > 0) {
+            throw new Exception("Unknown PMP addressing mode: " + unknownModes(0));
+          }
+
+          if (splitModes.sameElements(List("napot"))) {
+            println("Using optimized PmpPluginNapot, supporting only the NAPOT addressing mode.");
+            new PmpPluginNapot(
+              regions = argConfig.pmpRegions,
+              granularity = argConfig.pmpGranularity,
+              ioRange = _.msb
+            )
+          } else {
+            println("Using PmpPlugin supporting the NA4, NAPOT, and TOR addressing modes.");
+            println("This will ignore the pmpGranularity argument and have 4-byte granularity.");
+            new PmpPlugin (
+              regions = 16, ioRange = _.msb
+            )
+          }
+        } else new StaticMemoryTranslatorPlugin(
           ioRange      = _.msb
         ),
 
@@ -196,13 +220,13 @@ object GenCoreDefault{
           catchAddressMisaligned = true
         ),
         new CsrPlugin(
-          argConfig.csrPluginConfig match {
+          (argConfig.csrPluginConfig match {
             case "small" => CsrPluginConfig.small(mtvecInit = argConfig.machineTrapVector).copy(mtvecAccess = WRITE_ONLY, ecallGen = true, wfiGenAsNop = true)
             case "all" => CsrPluginConfig.all(mtvecInit = argConfig.machineTrapVector)
             case "linux" => CsrPluginConfig.linuxFull(mtVecInit = argConfig.machineTrapVector).copy(ebreakGen = false)
             case "linux-minimal" => CsrPluginConfig.linuxMinimal(mtVecInit = argConfig.machineTrapVector).copy(ebreakGen = false)
             case "secure" => CsrPluginConfig.secure(argConfig.machineTrapVector)
-          }
+          }).copy(xtvecModeGen = argConfig.xtvecModeGen)
         ),
         new YamlPlugin(argConfig.outputFile.concat(".yaml"))
       )
@@ -236,7 +260,10 @@ object GenCoreDefault{
 
       // Add in the Debug plugin, if requested
       if(argConfig.debug) {
-        plugins += new DebugPlugin(ClockDomain.current.clone(reset = Bool().setName("debugReset")))
+        plugins += new DebugPlugin(
+          debugClockDomain = ClockDomain.current.clone(reset = Bool().setName("debugReset")),
+          hardwareBreakpointCount = argConfig.hardwareBreakpointCount 
+        )
       }
 
       // CFU plugin/port
@@ -245,6 +272,7 @@ object GenCoreDefault{
           new CfuPlugin(
             stageCount = 1,
             allowZeroLatency = true,
+            withEnable = false,
             encodings = List(
               // CFU R-type
               CfuPluginEncoding (
@@ -323,6 +351,27 @@ class ForceRamBlockPhase() extends spinal.core.internals.Phase{
           case _ =>
         }
         if(!asyncRead) mem.addAttribute("ram_style", "block")
+      }
+      case _ =>
+    }
+  }
+  override def hasNetlistImpact: Boolean = false
+}
+
+class NoRwCheckPhase() extends spinal.core.internals.Phase{
+  override def impl(pc: PhaseContext): Unit = {
+    pc.walkBaseNodes{
+      case mem: Mem[_] => {
+        var doit = false
+        mem.dlcForeach[MemPortStatement]{
+          case _ : MemReadSync => doit = true
+          case _ =>
+        }
+        mem.dlcForeach[MemPortStatement]{
+          case p : MemReadSync if p.readUnderWrite != dontCare  => doit = false
+          case _ =>
+        }
+        if(doit) mem.addAttribute("no_rw_check")
       }
       case _ =>
     }
