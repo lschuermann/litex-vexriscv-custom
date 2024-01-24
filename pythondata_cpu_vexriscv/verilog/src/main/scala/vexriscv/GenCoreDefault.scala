@@ -44,7 +44,8 @@ case class ArgConfig(
   outputFile : String = "VexRiscv",
   csrPluginConfig : String = "small",
   dBusCachedRelaxedMemoryTranslationRegister : Boolean = false,
-  dBusCachedEarlyWaysHits : Boolean = true
+  dBusCachedEarlyWaysHits : Boolean = true,
+  formal : Boolean = false
 )
 
 object GenCoreDefault{
@@ -87,6 +88,7 @@ object GenCoreDefault{
       opt[String]("prediction")    action { (v, c) => c.copy(prediction = predictionMap(v))   } text("switch between regular CSR and array like one")
       opt[String]("outputFile")    action { (v, c) => c.copy(outputFile = v) } text("output file name")
       opt[String]("csrPluginConfig")  action { (v, c) => c.copy(csrPluginConfig = v) } text("switch between 'small', 'all', 'linux' and 'linux-minimal' version of control and status registers configuration")
+      opt[Boolean]("formal")       action { (v, c) => c.copy(formal = v) } text("enable RISC-V formal interface generation")
     }
     val argConfig = parser.parse(args, ArgConfig()).get
     val linux = argConfig.csrPluginConfig.startsWith("linux")
@@ -100,6 +102,7 @@ object GenCoreDefault{
           new IBusSimplePlugin(
             resetVector = argConfig.resetVector,
             prediction = argConfig.prediction,
+            catchAccessFault = false,
             cmdForkOnSecondStage = false,
             cmdForkPersistence = false, //Not required as the wishbone bridge ensure it
             compressedGen = argConfig.compressedGen,
@@ -131,7 +134,7 @@ object GenCoreDefault{
         if(argConfig.dCacheSize <= 0){
           new DBusSimplePlugin(
             catchAddressMisaligned = true,
-            catchAccessFault = true,
+            catchAccessFault = false,
             withLrSc = linux || argConfig.atomics,
             memoryTranslatorPortConfig = if(linux) MmuPortConfig(portTlbSize = 4) else null
           )
@@ -230,6 +233,12 @@ object GenCoreDefault{
         ),
         new YamlPlugin(argConfig.outputFile.concat(".yaml"))
       )
+
+      if(argConfig.formal) {
+        plugins ++= List(
+          new FormalPlugin
+	)
+      }
 
       if(argConfig.mulDiv) {
         if(argConfig.singleCycleMulDiv) {
